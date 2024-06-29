@@ -1,0 +1,171 @@
+async function getPlaybackRate() {
+    return new Promise((resolve, reject) => {
+        chrome.storage.local.get('playbackRate', (data) => {
+            if (chrome.runtime.lastError) {
+                reject(chrome.runtime.lastError);
+            } else {
+                resolve(data.playbackRate);
+            }
+        });
+    });
+}
+
+function UpdateBadge(text){
+    chrome.action.setBadgeText({ text: text });
+    chrome.action.setBadgeBackgroundColor({ color: [255, 0, 0, 255] });
+    console.log("setBadgeText:", text);
+}
+
+function ChangeMediaSpeed(playbackRate){
+    const target = "video,audio";
+    document.querySelectorAll(target)?.forEach((media)=>{
+        media.playbackRate = playbackRate;
+    });
+    displayPlaybackSpeed(playbackRate);
+    UpdateBadge(playbackRate.toFixed(1));
+}
+
+function displayPlaybackSpeed(playbackRate) {
+    // オーバーレイ要素を作成
+    const overlay = document.createElement('div');
+    overlay.style.position = 'fixed';
+    overlay.style.top = '10px';
+    overlay.style.right = '10px';
+    overlay.style.background = 'rgba(0, 0, 0, 0.7)';
+    overlay.style.color = 'white';
+    overlay.style.padding = '5px 10px';
+    overlay.style.borderRadius = '5px';
+    overlay.style.fontSize = '16px';
+    overlay.style.zIndex = '9999';
+  
+    // 再生速度を表示
+    overlay.textContent = `Playback Speed: ${playbackRate.toFixed(1)}`;
+  
+    // ページにオーバーレイを追加
+    document.body.appendChild(overlay);
+  
+    // アニメーション: 0.5秒で薄くし、0.5秒で透明にしてから削除
+    overlay.style.transition = 'opacity 0.5s, background-color 0.5s';
+    setTimeout(() => {
+        overlay.style.opacity = '0';
+        overlay.style.backgroundColor = 'rgba(0, 0, 0, 0)';
+    }, 500); // 0.5秒後に薄くする
+    setTimeout(() => {
+        document.body.removeChild(overlay);
+    }, 1000); // 1秒後にオーバーレイを削除
+}
+  
+
+async function WatchVideoElement(videoElement){
+    let currentSrc = null;
+    let targetPlaybackRate = await getPlaybackRate();
+
+    const addWatcher = function(mutationsList, observer) {
+        //console.log("YTT: adWatcher in:", mutationsList);
+        for (let mutation of mutationsList) {
+            if (mutation.type === 'childList') {
+                for (let addedNode of mutation.addedNodes) {
+                    if (addedNode.nodeType === Node.ELEMENT_NODE) {
+                        const buttonElement = addedNode.querySelector('.ytp-skip-ad-button') || addedNode.querySelector('.ytp-ad-skip-button-text') || addedNode.querySelector('.ytp-ad-skip-button-modern');
+                        if (buttonElement) {
+                            console.log("YTT: addedNode.querySelector('.ytp-ad-skip-button-text').click()");
+                            buttonElement.click();
+                            return;
+                        }
+                        const previewText = addedNode.querySelector('.ytp-ad-preview-text') || addedNode.querySelector('.ytp-ad-preview-text-modern') || addedNode.querySelector('.ytp-ad-text');
+                        if (previewText){
+                            videoElement.playbackRate = 4; // = 16;
+                            console.log("YTT: addedNode.querySelector('.ytp-ad-preview-text') found. speed to 2 (not 16)", location.href);
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+    };
+    let adWatchElement = videoElement.parentElement?.parentElement;
+    if (adWatchElement) {
+        (new MutationObserver(addWatcher)).observe(adWatchElement, { childList: true, subtree: true });
+    }
+
+    const srcChangeCallback = async function(mutationsList, observer) {
+        for (let mutation of mutationsList) {
+            if (mutation.type === 'attributes') {
+                if ( mutation.attributeName === 'src') {
+                    // src属性が変更された場合の処理
+                    const videoSrc = videoElement.getAttribute('src');
+                    if (!videoSrc || currentSrc == videoSrc) {
+                        console.log("YTT: return (!videoSrc || currentSrc == videoSrc)", videoSrc, currentSrc, currentSrc == videoSrc);
+                        return;
+                    }
+                    console.log("YTT: video.src change. location.href:", location.href, "currentSrc:", currentSrc, 'new video.src:', videoSrc);
+                    if (!videoSrc) {
+                        currentSrc = videoSrc;
+                    }
+                    const playbackRate = await getPlaybackRate();
+                    videoElement.playbackRate = playbackRate;
+                }
+            }
+        }
+    };
+    const config = { attributes: true, attributeFilter: ['src'] };
+
+    const observer = new MutationObserver(srcChangeCallback);
+    observer.observe(videoElement, config);
+    // srcChangeCallback は値が変わらないと呼ばれないので初回は素で起動しておきます
+    srcChangeCallback([
+        {
+            type: 'attributes',
+            attributeName: 'src'
+        }
+    ], null);
+
+    // videoElement の速度が変わった時のイベントハンドラ
+    let previousRateChangeTime = undefined;
+    videoElement.addEventListener('ratechange', async ()=>{
+        let targetRate = await getPlaybackRate();
+        let currentTime = new Date().getTime();
+        if (videoElement.playbackRate != targetRate && videoElement.playbackRate != 16) {
+            if (previousRateChangeTime !== null) {
+                let timeDifference = currentTime - previousRateChangeTime;
+                if (timeDifference < 1000/10) { // 0.1秒未満で再度？呼び出された
+                    return;
+                }
+            }
+            console.log("YTT: video.playbackRate changed. override.", videoElement.playbackRate, targetRate);
+            videoElement.playbackRate = targetRate;
+            previousRateChangeTime = currentTime;
+        }
+    });
+}
+
+// body以下に video エレメントが追加される場合について監視するコールバック
+function bodyCallback(mutationsList, bodyObserver) {
+    mutationsList.forEach(mutation => {
+        if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+            const addedNodes = Array.from(mutation.addedNodes);
+            addedNodes.forEach(addedNode => {
+                if (addedNode.nodeType === Node.ELEMENT_NODE && addedNode.tagName === 'VIDEO') {
+                    // 新しいvideo要素が追加された場合、一瞬遅れてMutationObserverを設定
+                    setTimeout(()=>{WatchVideoElement(addedNode)}, 10);
+                }
+            });
+        }
+    });
+}
+// body以下に新しいvideo要素が追加された場合を監視
+const bodyObserver = new MutationObserver(bodyCallback);
+bodyObserver.observe(document.body, { childList: true, subtree: true });
+
+// 既存のvideo要素にMutationObserverを設定
+document.querySelectorAll('video')?.forEach(videoElement => {
+    WatchVideoElement(videoElement);
+});
+
+// popup.js からの速度変更イベントを受け取る
+chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+    console.log("onMessage:", request);
+    if (request.playbackRate) {
+        ChangeMediaSpeed(parseFloat(request.playbackRate))
+    }
+});

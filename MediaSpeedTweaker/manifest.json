@@ -1,0 +1,41 @@
+{
+  "name": "MediaSpeedTweaker",
+  "description": "MediaSpeedTewaker は、video や audio element の再生速度を上書きしようとする chrome extension です。",
+  "version": "1.0.0",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "nativeMessaging"
+  ],
+  "background": {
+    "service_worker": "service_worker.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": ""
+  },
+  "commands": {
+    "increase_speed": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Up"
+      },
+      "description": "強制的に上書きする再生速度を 0.5倍 加速させます"
+    },
+    "decrease_speed": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Down"
+      },
+      "description": "強制的に上書きする再生速度を 0.5倍 減速させます"
+    }
+  },
+  "manifest_version": 3
+}
