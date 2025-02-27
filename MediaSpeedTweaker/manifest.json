@@ -35,6 +35,9 @@
         "default": "Ctrl+Shift+Down"
       },
       "description": "強制的に上書きする再生速度を 0.5倍 減速させます"
+    },
+    "toggle_speed": {
+      "description": "現在の速度が1.0であるなら設定値に、設定値であるなら1.0に上書きします"
     }
   },
   "manifest_version": 3
