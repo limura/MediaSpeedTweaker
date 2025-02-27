@@ -3,7 +3,7 @@ export function updatePlaybackRate(playbackRate) {
         chrome.tabs.query(
             {active: true, lastFocusedWindow: true, currentWindow: true},
             function(tab) {
-                chrome.tabs.sendMessage(tab[0].id, {playbackRate: playbackRate})
+                chrome.tabs.sendMessage(tab[0].id, {type: "overridePlaybackSpeed", playbackRate: playbackRate})
             }
         );
     });
