@@ -12,15 +12,19 @@ async function getPlaybackRate() {
 
 function UpdateBadge(text){
     chrome.runtime.sendMessage({type: "setBadgeTitle", title: text});
-    console.log("setBadgeText:", text);
+    //console.log("setBadgeText:", text);
 }
 
 function ChangeMediaSpeed(playbackRate){
     const target = "video,audio";
+	var hit = false;
     document.querySelectorAll(target)?.forEach((media)=>{
+		hit = true;
         media.playbackRate = playbackRate;
     });
-    displayPlaybackSpeed(playbackRate);
+	if(hit) {
+	    displayPlaybackSpeed(playbackRate);
+	}
 }
 
 function displayPlaybackSpeed(playbackRate) {
@@ -73,7 +77,7 @@ async function WatchVideoElement(videoElement){
                         const buttonElement = addedNode.querySelector('.ytp-skip-ad-button') || addedNode.querySelector('.ytp-ad-skip-button-text') || addedNode.querySelector('.ytp-ad-skip-button-modern');
                         if (buttonElement) {
                             setTimeout(()=>{
-                                console.log("YTT: addedNode.querySelector('.ytp-ad-skip-button-text').click()");
+                                //console.log("YTT: addedNode.querySelector('.ytp-ad-skip-button-text').click()");
                                 //buttonElement.click();
                             }, 4000);
                             return;
@@ -81,7 +85,7 @@ async function WatchVideoElement(videoElement){
                         const previewText = addedNode.querySelector('.ytp-ad-preview-text') || addedNode.querySelector('.ytp-ad-preview-text-modern') || addedNode.querySelector('.ytp-ad-text');
                         if (previewText){
                             //videoElement.playbackRate = 2; // = 16;
-                            console.log("YTT: addedNode.querySelector('.ytp-ad-preview-text') found. speed to 2 (not 16)", location.href);
+                            //console.log("YTT: addedNode.querySelector('.ytp-ad-preview-text') found. speed to 2 (not 16)", location.href);
                             return;
                         }
                     }
@@ -101,29 +105,29 @@ async function WatchVideoElement(videoElement){
                     // src属性が変更された場合の処理
                     const videoSrc = videoElement.getAttribute('src');
                     if (!videoSrc || currentSrc == videoSrc) {
-                        console.log("YTT: return (!videoSrc || currentSrc == videoSrc)", videoSrc, currentSrc, currentSrc == videoSrc);
+                        //console.log("YTT: return (!videoSrc || currentSrc == videoSrc)", videoSrc, currentSrc, currentSrc == videoSrc);
                         return;
                     }
                     setTimeout(async ()=>{
                         // 通常時に呼び出される(v=... のURLでリロードした時とか)
-                        console.log("YTT: video.src change. location.href:", location.href, "currentSrc:", currentSrc, 'new video.src:', videoSrc, Date.now());
+                        //console.log("YTT: video.src change. location.href:", location.href, "currentSrc:", currentSrc, 'new video.src:', videoSrc, Date.now());
                         if (!videoSrc) {
                             currentSrc = videoSrc;
                         }
                         if (document.querySelector(".ytp-preview-ad")) {
-                            console.log("YTT: .ytp-preview-ad found. playbackRate not change.");
+                            //console.log("YTT: .ytp-preview-ad found. playbackRate not change.");
                             return;
                         }else{
-                            console.log("YTT: .ytp-preview-ad not found.", Date.now());
+                            //console.log("YTT: .ytp-preview-ad not found.", Date.now());
                         }
                         if (document.querySelector('.ytp-ad-module')?.childNodes?.length > 0) {
-                            console.log("YTT: .ytp-ad-module found. playbackRate not change.");
+                            //console.log("YTT: .ytp-ad-module found. playbackRate not change.");
                             return;
                         }else{
                             let length = document.querySelector('.ytp-ad-module')?.childNodes?.length;
-                            console.log("YTT: .ytp-ad-module not found?", document.querySelector('.ytp-ad-module'), length, Date.now());
+                            //console.log("YTT: .ytp-ad-module not found?", document.querySelector('.ytp-ad-module'), length, Date.now());
                             if (length > 0) {
-                                console.log("YTT: .ytp-ad-module found. playbackRate not change. (length > 0)");
+                                //console.log("YTT: .ytp-ad-module found. playbackRate not change. (length > 0)");
                                 return;
                             }
                         }
@@ -135,7 +139,7 @@ async function WatchVideoElement(videoElement){
                             console.log("YTT: video.playbackRate != 1 or not playing youtube.", videoElement.playbackRate, videoSrc, Date.now());
                         }*/
                         const playbackRate = await getPlaybackRate();
-                        console.log("YTT: playbackRate override:", playbackRate, "from:", videoElement.playbackRate, Date.now());
+                        //console.log("YTT: playbackRate override:", playbackRate, "from:", videoElement.playbackRate, Date.now());
                         videoElement.playbackRate = playbackRate;
                         UpdateBadge(playbackRate.toFixed(1));
                     }, 1000);
@@ -167,7 +171,7 @@ async function WatchVideoElement(videoElement){
                     return;
                 }
             }
-            console.log("YTT: video.playbackRate changed. override.", videoElement.playbackRate, targetRate);
+            //console.log("YTT: video.playbackRate changed. override.", videoElement.playbackRate, targetRate);
             //videoElement.playbackRate = targetRate;
             //UpdateBadge(targetRate.toFixed(1));
             previousRateChangeTime = currentTime;
@@ -202,25 +206,29 @@ async function togglePlaybackSpeed(playbackRate) {
     let targetPlaybackRate = await getPlaybackRate();
     const target = "video,audio";
     var setRate = targetPlaybackRate;
+	var hit = false;
     document.querySelectorAll(target)?.forEach((media)=>{
+		hit = true;
         if (media.playbackRate == 1) {
             media.playbackRate = targetPlaybackRate;
             UpdateBadge(targetPlaybackRate.toFixed(1));
-            console.log("YTT: togglePlaybackSpeed: 1 to ", targetPlaybackRate, media);
+            //console.log("YTT: togglePlaybackSpeed: 1 to ", targetPlaybackRate, media);
             setRate = targetPlaybackRate;
         } else {
             media.playbackRate = 1;
             UpdateBadge(1);
-            console.log("YTT: togglePlaybackSpeed: change to 1 ", targetPlaybackRate, media);
+            //console.log("YTT: togglePlaybackSpeed: change to 1 ", targetPlaybackRate, media);
             setRate = 1;
         }
     });
-    displayPlaybackSpeed(setRate);
+	if(hit){
+	    displayPlaybackSpeed(setRate);
+	}
 }
 
 // popup.js からの速度変更イベントを受け取る
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-    console.log("onMessage:", request);
+    //console.log("onMessage:", request);
     switch (request.type) {
         case 'overridePlaybackSpeed':
             if (request.playbackRate) {
