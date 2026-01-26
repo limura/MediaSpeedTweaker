@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
   
     // ポップアップを開いたときにローカルストレージから設定を読み込む
     chrome.storage.local.get('playbackRate', function(data) {
-        var playbackRate = data.playbackRate || 2.0; // デフォルト値を設定
+        var playbackRate = data.playbackRate || 1.0; // デフォルト値を設定
         speedSelect.value = playbackRate.toString();
     });
   
